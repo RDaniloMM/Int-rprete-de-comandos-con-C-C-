@@ -1,0 +1,29 @@
+//comando  opciones  argumentos
+    // |       |         |
+    // v       v         v
+    // ls    -alh   hola.txt
+
+/*
+Lista de operadores de control:
+>
+<
+>>
+|
+
+;
+&&
+||
+& (tal vez)
+*/
+
+//  comandos de prueba:
+//rm -f archivo_a_eliminar.txt
+//cp -r carpeta_origen/ carpeta_destino/
+//sudo apt-get install curl
+//mkdir -p /ruta/de/directorios/nuevos
+
+//./mi_programa > registro.txt
+//comando >> archivo_salida.txt
+//cat < texto.txt
+//sort < desordenado.txt > ordenado.txt
+//cd ProyectosSecretos/ac && touch Proy.txt && ls -al > arch.txt && ./prog <in.txt >out.txt
