@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "*.php": "php",
+        "iostream": "cpp",
+        "ostream": "cpp",
+        "new": "cpp",
+        "array": "cpp",
+        "string_view": "cpp"
+    }
+}
