@@ -7,7 +7,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <pwd.h>
-#include <fcntl.h>  // Necesario para la redirección de salida
+#include <fcntl.h>
 
 #define ROJO     "\x1b[31m"
 #define VERDE   "\x1b[32m"
@@ -26,10 +26,11 @@ using namespace std;
 /*
 Lista de operadores de control:
     Operadores de redireccion:
-        Solo se acepta uno de ellos a la vez, se evalúa el caso.
+        Solo se acepta uno de ellos a la vez, se eval�a el caso.
         >
         <
         |
+        >>
     Operadores de encadenamiento:
         ;
         &&
@@ -42,8 +43,10 @@ private:
     //char *inputfile;
     char dir[PATH_MAX];
     char hostName[HOST_NAME_MAX];
+    int redireccionamiento = 0;
     passwd *user;
     queue<char **> coms; //cola de comandos a ejecutarse
+    queue<char **> direccion;
     char str[MAX_COMMAND_LENGTH]; //comando de entrada
     //int background;
 
@@ -73,13 +76,20 @@ void Comando::prompt(){
 //comando 
 void Comando::divide(){
     // se divide la linea en argumentos, args[0] es el comando simple
-    int n = 0, casoencad;
+    int n = 0, casoencad, m = 0;
     bool hayencad = 0;
     char **comsimple = new char *[MAX_ARGUMENTS];
+    char **direc = new char *[MAX_ARGUMENTS];
 
     char *token = strtok(str, " ");
     while(token != NULL && n < MAX_COMMAND_LENGTH){
-        if(!(casoencad = casoencadenamiento(token))){ //si no es un opr de encad, se sigue guardando como comando simple
+        if((casoencad = casoredireccion(token)) == 2){ // Analiza si el Token es igual a "<" (value 2) para el redireccionamiento
+           // Objetivo del if es dividir el comando en 2 partes "programa" < "archivo"
+            comsimple[n] = NULL; // asigna valor Null al ultimo valor de la PRIMERA PARTE
+            token = strtok(NULL, " ");
+            direc[m++] = token; // asigna el nombre de archivo (token) en direc;
+            redireccionamiento = 2; // condicion para saber si se encontro el redireccionamiento
+        }else if(!(casoencad = casoencadenamiento(token))){ //si no es un opr de encad, se sigue guardando como comando simple
             comsimple[n++] = token;
             hayencad = 0;
         }
@@ -95,6 +105,11 @@ void Comando::divide(){
     if(!hayencad){
         comsimple[n] = NULL;
         coms.push(comsimple);
+        if(redireccionamiento == 2){
+            direc[m] = NULL; // asigno al final de la segunda parte NULL para fin de cadena
+            direccion.push(direc); // el nombre de fichero se plasma en el atributo direccion
+        }
+
     }
 }
 
@@ -107,38 +122,28 @@ void Comando::execute(){
         }
         else{
             pid_t child_pid = fork();
-            if(child_pid < 0){
+
+             //Duplica el proceso actual y retorna un valor segun sea el proceso
+            if(child_pid < 0){ //Error
                 cout << "Error al crear un proceso hijo" << endl;
                 exit(1);
             }
-            else if(child_pid == 0){
-                int out_redirect = -1;  // Descriptor de archivo para la redirección de salida
-
-                // Buscar operador de redirección de salida ">"
-                for(int i = 0; coms.front()[i] != NULL; ++i){
-                    if(casoredireccion(coms.front()[i]) == 1){  // 1 representa ">"
-                        out_redirect = i + 1;  // El siguiente token después de ">" es el nombre del archivo de salida
-                        break;
+            else if(child_pid == 0){ //Proceso hijo
+                if (redireccionamiento == 2){ // Si se encontro el redireccionamiento
+                    int fd = open(direccion.front()[0], O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer 
+                    if (fd < 0) {
+                        cerr << "Error al abrir el archivo de entrada" << std::endl;
+                        exit(EXIT_FAILURE);
                     }
+                    dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
+                    close(fd); // cierra el archivo
                 }
-
-                if(out_redirect != -1){
-                    // Redirigir la salida a un archivo
-                    int fd_out = open(coms.front()[out_redirect], O_WRONLY | O_CREAT | O_TRUNC, 0666);
-                    if(fd_out == -1){
-                        perror("Error al abrir el archivo de salida");
-                        exit(1);
-                    }
-                    dup2(fd_out, STDOUT_FILENO);  // Redirigir STDOUT al archivo
-                    close(fd_out);  // Cerrar el descriptor de archivo duplicado
-                }
-
-                execvp(coms.front()[0], coms.front());
-                cout << "Error al ejecutar el comando\n";
+                execvp(coms.front()[0], coms.front()); //Ejecuta el comando con sus argumentos
+                cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta l�nea
                 exit(1);
             }
-            else{
-                wait(NULL);
+            else{// Proceso padre
+                wait(NULL); //Espera a que el proceso hijo termine
             }
         }
         coms.pop();
@@ -162,7 +167,8 @@ void Comando::ver_comandos(){
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
     if(!strcmp(token, ">")) return 1;
     else if(!strcmp(token, "<")) return 2;
-    else if(!strcmp(token, "|")) return 3;
+    else if(!strcmp(token, ">>")) return 3;
+    else if(!strcmp(token, "|")) return 4;
     else return 0;
 }
 
