@@ -26,11 +26,10 @@ using namespace std;
 /*
 Lista de operadores de control:
     Operadores de redireccion:
-        Solo se acepta uno de ellos a la vez, se eval�a el caso.
+        Solo se acepta uno de ellos a la vez, se evalÃºa el caso.
         >
         <
         |
-        >>
     Operadores de encadenamiento:
         ;
         &&
@@ -43,11 +42,11 @@ private:
     //char *inputfile;
     char dir[PATH_MAX];
     char hostName[HOST_NAME_MAX];
-    int redireccionamiento = 0;
     passwd *user;
-    queue<char **> coms; //cola de comandos a ejecutarse
-    queue<char **> direccion;
+    queue<pair<char **, int>> coms; //cola de comandos a ejecutarse
+    queue<char *> direccion; //cola de archivos o argumentos
     char str[MAX_COMMAND_LENGTH]; //comando de entrada
+    vector<int> mod;
     //int background;
 
 public:
@@ -58,6 +57,8 @@ public:
     int casoredireccion(char *);
     int casoencadenamiento(char *);
     void ver_comandos();
+    void ver_direcciones();
+    void processRed();
 };
 
 Comando::Comando(){
@@ -67,8 +68,15 @@ Comando::Comando(){
 }
 
 void Comando::prompt(){
-    getcwd(dir, PATH_MAX); //obtiene el nombre del directorio actual
-    cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dir << RESET << "[ESIS]$ ";
+    getcwd(dir, PATH_MAX); // obtiene la direccion actual
+    string homeDir(user->pw_dir); // directorio home del usuario
+    string dirStr(dir);
+    size_t pos = dirStr.find(homeDir);
+    if(pos != string::npos){
+        dirStr.replace(pos, homeDir.length(), "~");
+    }
+
+    cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
     fflush(stdout);
     cin.getline(str, MAX_COMMAND_LENGTH);
     if(!strcmp(str, "salir")) exit(0);
@@ -76,92 +84,123 @@ void Comando::prompt(){
 //comando 
 void Comando::divide(){
     // se divide la linea en argumentos, args[0] es el comando simple
-    int n = 0, casoencad, m = 0;
-    bool hayencad = 0;
-    char **comsimple = new char *[MAX_ARGUMENTS];
-    char **direc = new char *[MAX_ARGUMENTS];
+    {
+    //cuando no hay encadenamiento:
+    //1. ls
+    //2. ls -al
+    //Se acabo, ya que no hay encadenamiento:
+    //3. ls -al NULL
+    //4. coms.push(comsimple)
 
+    //cuando si hay encad:
+    //1. ls
+    //2. ls -al
+    //Se detecta "&&" por lo que:
+    //3. ls -al NULL
+    //4. coms.push(comsimple)
+    //se reinicia comsimple
+    //5. pwd
+    //
+    }
+    int n = 0, casoencad, casoredir = 0;
+    bool hayencad = 0, haydirec = 0;
+
+    char **comsimple = new char *[MAX_ARGUMENTS];
+    char *argredireccion;
     char *token = strtok(str, " ");
     while(token != NULL && n < MAX_COMMAND_LENGTH){
-        if((casoencad = casoredireccion(token)) == 2){ // Analiza si el Token es igual a "<" (value 2) para el redireccionamiento
-           // Objetivo del if es dividir el comando en 2 partes "programa" < "archivo"
-            comsimple[n] = NULL; // asigna valor Null al ultimo valor de la PRIMERA PARTE
-            token = strtok(NULL, " ");
-            direc[m++] = token; // asigna el nombre de archivo (token) en direc;
-            redireccionamiento = 2; // condicion para saber si se encontro el redireccionamiento
-        }else if(!(casoencad = casoencadenamiento(token))){ //si no es un opr de encad, se sigue guardando como comando simple
-            comsimple[n++] = token;
-            hayencad = 0;
+        casoredir = 0;
+        if(!(casoencad = casoencadenamiento(token))){ //si no es un opr de encad, se sigue guardando como comando simple
+            casoredir = casoredireccion(token);
+
+            if(casoredir){
+                haydirec = 1;
+                token = strtok(NULL, " ");
+                comsimple[n] = NULL;
+                coms.push({comsimple,casoredir});
+                direccion.push(token);
+                mod.push_back(casoredir);
+            }
+            else{
+                comsimple[n++] = token;
+            }
         }
         else{//caso contrario, se acaba el comando simple y se guarda en la cola de comandos
             hayencad = 1;
             comsimple[n] = NULL;
-            coms.push(comsimple);
+            if(!haydirec){
+                coms.push({comsimple,casoredir});
+                mod.push_back(0);
+            }
+            haydirec = 0;
             n = 0;
             comsimple = new char *[MAX_ARGUMENTS];
         }
+
         token = strtok(NULL, " ");
     }
-    if(!hayencad){
-        comsimple[n] = NULL;
-        coms.push(comsimple);
-        if(redireccionamiento == 2){
-            direc[m] = NULL; // asigno al final de la segunda parte NULL para fin de cadena
-            direccion.push(direc); // el nombre de fichero se plasma en el atributo direccion
-        }
-
+    comsimple[n] = NULL;
+    if(!haydirec){
+        coms.push({comsimple,casoredir});
+        mod.push_back(0);
     }
 }
 
 void Comando::execute(){
     while(!coms.empty()){
-        if(strcmp(coms.front()[0], "cd") == 0){
-            if(chdir(coms.front()[1]) == -1){
+        if(strcmp(coms.front().first[0], "cd") == 0){
+            if(chdir(coms.front().first[1]) == -1){
                 cout << "Error al cambiar de directorio\n";
             }
         }
         else{
-            pid_t child_pid = fork();
-
-             //Duplica el proceso actual y retorna un valor segun sea el proceso
+            pid_t child_pid = fork(); //Duplica el proceso actual y retorna un valor segun sea el proceso
             if(child_pid < 0){ //Error
                 cout << "Error al crear un proceso hijo" << endl;
                 exit(1);
             }
             else if(child_pid == 0){ //Proceso hijo
-                if (redireccionamiento == 2){ // Si se encontro el redireccionamiento
-                    int fd = open(direccion.front()[0], O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer 
-                    if (fd < 0) {
-                        cerr << "Error al abrir el archivo de entrada" << std::endl;
-                        exit(EXIT_FAILURE);
-                    }
-                    dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
-                    close(fd); // cierra el archivo
-                }
-                execvp(coms.front()[0], coms.front()); //Ejecuta el comando con sus argumentos
-                cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta l�nea
+                processRed();
+                execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
+                cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃ­nea
                 exit(1);
             }
             else{// Proceso padre
                 wait(NULL); //Espera a que el proceso hijo termine
             }
+            if(!direccion.empty() && (mod[0] > 0)) {
+                direccion.pop();
+            }
+            mod.erase(mod.begin());
         }
         coms.pop();
     }
 }
-
-
-void Comando::ver_comandos(){
-    queue<char **>q = coms;
+void Comando::ver_direcciones(){
+    queue<char *>q = direccion;
     while(!q.empty()){
-        int i = 0;
-        while(q.front()[i] != NULL){
-            cout << q.front()[i++] << " ";
-        }
-        cout << endl;
+        cout << q.front() << " ";
         q.pop();
     }
     cout << endl;
+}
+
+void Comando::processRed(){ // Analiza si se ejecuto alguna redireccion para el proceso de manejado de archivo
+    if(coms.front().second == 2){ // Si se encontro el redireccionamiento "<"
+            int fd = open(direccion.front(), O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer
+            if(fd < 0){
+                cerr << "Error al abrir el archivo de entrada: " << direccion.front() << '\0' << endl;
+                exit(EXIT_FAILURE);
+            }
+            dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
+            close(fd); // cierra el archivo
+
+            // entrada2.txt
+
+        }else if(coms.front().second == 1){
+
+    }
+
 }
 
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
@@ -185,6 +224,7 @@ int main(){
         comando.prompt();
         comando.divide();
         //comando.ver_comandos();
+       // comando.ver_direcciones();
         comando.execute();
     }
     return 0;
