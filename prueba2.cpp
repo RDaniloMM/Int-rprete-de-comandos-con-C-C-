@@ -195,10 +195,14 @@ void Comando::processRed(){ // Analiza si se ejecuto alguna redireccion para el 
             dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
             close(fd); // cierra el archivo
 
-            // entrada2.txt
-
         }else if(coms.front().second == 1){
-
+            int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);  	 
+            if (fd < 0) {
+                cerr << "Error al abrir el archivo de salida" << std::endl;
+                exit(EXIT_FAILURE);
+            }
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
     }
 
 }
