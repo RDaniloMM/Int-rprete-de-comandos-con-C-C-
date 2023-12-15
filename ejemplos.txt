@@ -1,29 +1,44 @@
+//(com (-opcs)* (args)* (opr in/outfile?)*)*
+
 //comando  opciones  argumentos
     // |       |         |
     // v       v         v
     // ls    -alh   hola.txt
 
+    Analisis divide:
+//cuando no hay encadenamiento:
+//1. ls
+//2. ls -al
+//Se acabo, ya que no hay encadenamiento:
+//3. ls -al NULL
+//4. coms.push(comsimple)
+
+//cuando si hay encad:
+//1. ls
+//2. ls -al
+//Se detecta "&&" por lo que:
+//3. ls -al NULL
+//4. coms.push(comsimple)
+//se reinicia comsimple
+//5. pwd
+//
+
+
 /*
-Lista de operadores de control:
+Lista de operadores de control a implementar:
+operadores de redireccion:
 >
 <
->>
-|
-
+Operadores de encadenamiento:
 ;
-&&
-||
-& (tal vez)
 */
 
-//  comandos de prueba:
-//rm -f archivo_a_eliminar.txt
-//cp -r carpeta_origen/ carpeta_destino/
-//sudo apt-get install curl
-//mkdir -p /ruta/de/directorios/nuevos
+test.txt:
+sistemas operativos es un curso bonito :)
 
-//./mi_programa > registro.txt
-//comando >> archivo_salida.txt
-//cat < texto.txt
-//sort < desordenado.txt > ordenado.txt
-//cd ProyectosSecretos/ac && touch Proy.txt && ls -al > arch.txt && ./prog <in.txt >out.txt
+
+comandos de prueba:
+cat test.txt
+ls -l > test.txt
+pwd ; cat test.txt ; cd .. ; mkdir sistemasoperativos_es_easy ; cd output
+mkdir Prueba ; cd Prueba ; touch proy.txt in.txt ; ls -al > proy.txt ; cd .. ; ./test < test2.txt ; echo SO ESIS > test3.txt ; cat test3.txt ; whoami
