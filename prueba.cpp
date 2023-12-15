@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <pwd.h>
+#include <fcntl.h>
 
 #define ROJO     "\x1b[31m"
 #define VERDE   "\x1b[32m"
@@ -42,7 +43,8 @@ private:
     char dir[PATH_MAX];
     char hostName[HOST_NAME_MAX];
     passwd *user;
-    queue<char **> coms; //cola de comandos a ejecutarse
+    queue<pair<char **, int>> coms; //cola de comandos a ejecutarse
+    queue<char *> direccion; //cola de archivos o argumentos
     char str[MAX_COMMAND_LENGTH]; //comando de entrada
     //int background;
 
@@ -54,6 +56,7 @@ public:
     int casoredireccion(char *);
     int casoencadenamiento(char *);
     void ver_comandos();
+    void ver_direcciones();
 };
 
 Comando::Comando(){
@@ -63,8 +66,15 @@ Comando::Comando(){
 }
 
 void Comando::prompt(){
-    getcwd(dir, PATH_MAX); //obtiene el nombre del directorio actual
-    cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dir << RESET << "[ESIS]$ ";
+    getcwd(dir, PATH_MAX); // obtiene la direccion actual
+    string homeDir(user->pw_dir); // directorio home del usuario
+    string dirStr(dir);
+    size_t pos = dirStr.find(homeDir);
+    if(pos != string::npos){
+        dirStr.replace(pos, homeDir.length(), "~");
+    }
+
+    cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
     fflush(stdout);
     cin.getline(str, MAX_COMMAND_LENGTH);
     if(!strcmp(str, "salir")) exit(0);
@@ -72,56 +82,101 @@ void Comando::prompt(){
 //comando 
 void Comando::divide(){
     // se divide la linea en argumentos, args[0] es el comando simple
-    int n = 0, casoencad;
-    bool hayencad = 0;
-    char **comsimple = new char *[MAX_ARGUMENTS];
+    {
+    //cuando no hay encadenamiento:
+    //1. ls
+    //2. ls -al
+    //Se acabo, ya que no hay encadenamiento:
+    //3. ls -al NULL
+    //4. coms.push(comsimple)
 
+    //cuando si hay encad:
+    //1. ls
+    //2. ls -al
+    //Se detecta "&&" por lo que:
+    //3. ls -al NULL
+    //4. coms.push(comsimple)
+    //se reinicia comsimple
+    //5. pwd
+    //
+    }
+    int n = 0, casoencad, casoredir = 0;
+    bool hayencad = 0;
+
+    char **comsimple = new char *[MAX_ARGUMENTS];
+    char *argredireccion;
     char *token = strtok(str, " ");
     while(token != NULL && n < MAX_COMMAND_LENGTH){
         if(!(casoencad = casoencadenamiento(token))){ //si no es un opr de encad, se sigue guardando como comando simple
-            comsimple[n++] = token;
+            casoredir = casoredireccion(token);
+
+            if(casoredir){
+                token = strtok(NULL, " ");
+                comsimple[n] = NULL;
+                argredireccion = token;
+                //if(hayencad){
+                direccion.push(argredireccion);
+                direccion.push(NULL);
+                //cout << argredireccion;
+                argredireccion = NULL;
+            //}
+            }
+            else{
+                comsimple[n++] = token;
+            }
             hayencad = 0;
         }
         else{//caso contrario, se acaba el comando simple y se guarda en la cola de comandos
             hayencad = 1;
             comsimple[n] = NULL;
-            coms.push(comsimple);
+            coms.push({comsimple,casoredir});
             n = 0;
             comsimple = new char *[MAX_ARGUMENTS];
+            direccion.push(argredireccion);
+            cout << argredireccion << endl;
+            cout << direccion.front() << endl;
+            argredireccion = NULL;
+
         }
         token = strtok(NULL, " ");
     }
     if(!hayencad){
         comsimple[n] = NULL;
-        coms.push(comsimple);
+        coms.push({comsimple,casoredir});
+        direccion.push(argredireccion);
+        direccion.push(NULL);
     }
+
 }
 
 void Comando::execute(){
+
     while(!coms.empty()){
-        if(strcmp(coms.front()[0], "cd") == 0){
-            if(chdir(coms.front()[1]) == -1){
+        if(strcmp(coms.front().first[0], "cd") == 0){
+            if(chdir(coms.front().first[1]) == -1){
                 cout << "Error al cambiar de directorio\n";
             }
         }
         else{
-
             pid_t child_pid = fork(); //Duplica el proceso actual y retorna un valor segun sea el proceso
             if(child_pid < 0){ //Error
                 cout << "Error al crear un proceso hijo" << endl;
                 exit(1);
             }
             else if(child_pid == 0){ //Proceso hijo
-                //analizar aqui cada comando simple
-                string str = coms.front()[0];
-                switch(str.find(">")){
-                case string::npos: //no encontrado
-                    execvp(coms.front()[0], coms.front()); //Ejecuta el comando con sus argumentos
-                default:
-
+                //cout << direccion.front() << endl;
+                if(coms.front().second == 2){ // Si se encontro el redireccionamiento
+                    int fd = open(direccion.front(), O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer
+                    if(fd < 0){
+                        cerr << "Error al abrir el archivo de entrada: " << direccion.front() << '/0' << std::endl;
+                        exit(EXIT_FAILURE);
+                    }
+                    dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
+                    close(fd); // cierra el archivo
+                    direccion.pop();
                 }
-                execvp(coms.front()[0], coms.front()); //Ejecuta el comando con sus argumentos
 
+                execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
                 cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta línea
                 exit(1);
             }
@@ -132,9 +187,16 @@ void Comando::execute(){
         coms.pop();
     }
 }
+void Comando::ver_direcciones(){
+    queue<char *>q = direccion;
+    while(!q.empty()){
+        cout << q.front() << " ";
+        q.pop();
+    }
+    cout << endl;
+}
 
-
-void Comando::ver_comandos(){
+/*void Comando::ver_comandos(){
     queue<char **>q = coms;
     while(!q.empty()){
         int i = 0;
@@ -145,12 +207,13 @@ void Comando::ver_comandos(){
         q.pop();
     }
     cout << endl;
-}
+}*/
 
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
     if(!strcmp(token, ">")) return 1;
     else if(!strcmp(token, "<")) return 2;
-    else if(!strcmp(token, "|")) return 3;
+    else if(!strcmp(token, ">>")) return 3;
+    else if(!strcmp(token, "|")) return 4;
     else return 0;
 }
 
@@ -167,6 +230,7 @@ int main(){
         comando.prompt();
         comando.divide();
         //comando.ver_comandos();
+        //comando.ver_direcciones();
         comando.execute();
     }
     return 0;
