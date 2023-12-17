@@ -20,7 +20,6 @@
 #define MAX_ARGUMENTS 32
 using namespace std;
 
-
 class Comando{
 private:
     char dir[PATH_MAX];
@@ -29,8 +28,7 @@ private:
     queue<pair<char **, int>> coms; //cola de comandos a ejecutarse
     queue<char *> direccion; //cola de archivos o argumentos
     char str[MAX_COMMAND_LENGTH]; //comando de entrada
-    vector<int> mod; // indicador de si el comando tiene redireccion para eliminar direcciones residuales
-
+    vector<int> mod; //vector de redirecciones
 public:
     Comando();
     void prompt();
@@ -38,8 +36,6 @@ public:
     void execute();
     int casoredireccion(char *);
     int casoencadenamiento(char *);
-    void ver_comandos();
-    void ver_direcciones();
     void processRed();
 };
 
@@ -53,21 +49,22 @@ void Comando::prompt(){
     getcwd(dir, PATH_MAX); // obtiene la direccion actual
     string homeDir(user->pw_dir); // directorio home del usuario
     string dirStr(dir);
+
+    //encuentra homeDir dentro de dir (directorio completo actual) y reemplaza /home/usuario por ~
     size_t pos = dirStr.find(homeDir);
     if(pos != string::npos){
         dirStr.replace(pos, homeDir.length(), "~");
     }
-
     cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
     fflush(stdout);
     cin.getline(str, MAX_COMMAND_LENGTH);
     if(!strcmp(str, "salir")) exit(0);
 }
-//comando 
+
 void Comando::divide(){
     // se divide la linea en argumentos, args[0] es el comando simple
     int n = 0, casoencad, casoredir = 0;
-    bool hayencad = 0, haydirec = 0;
+    bool haydirec = 0;
 
     char **comsimple = new char *[MAX_ARGUMENTS]; //Se encarga de reunir los comandos token por token
     char *token = strtok(str, " "); //Asigna a cada token los valores de ingreso del str separados por " " espacio
@@ -88,7 +85,6 @@ void Comando::divide(){
             }
         }
         else{//caso contrario, se acaba el comando simple y se guarda en la cola de comandos
-            hayencad = 1; // Creamos este auxiliar para saber si la entrada tiene encadenamiento
             comsimple[n] = NULL; // pone limite al conjunto de tokens almacenados
             if(!haydirec){ // consulta si anterior a ello se encontro un direccionamiento porque si encontro se volveria a repetir la linea 94
                 coms.push({comsimple,casoredir});// caso que no encontro redireccionamiento significa que la linea 82 no fue ejecutada, por ende necesita ejecutarse para guarda el comando simple
@@ -105,9 +101,6 @@ void Comando::divide(){
     if(!haydirec){
         coms.push({comsimple,casoredir});
         mod.push_back(0);
-    }
-    for (int i = 0 ; mod.size() ; i++){
-        cout<<mod[i]<<" ";
     }
 }
 
@@ -133,57 +126,61 @@ void Comando::execute(){
             else{// Proceso padre
                 wait(NULL); //Espera a que el proceso hijo termine
             }
-            if(!direccion.empty() && (mod[0] > 0)) {
+            if(!direccion.empty() && (mod[0] > 0)){
                 direccion.pop();
-            }  
+            }
+
         }
         mod.erase(mod.begin());
         coms.pop();
     }
 }
-void Comando::ver_direcciones(){
-    queue<char *>q = direccion;
-    while(!q.empty()){
-        cout << q.front() << " ";
-        q.pop();
-    }
-    cout << endl;
-}
 
 void Comando::processRed(){ // Analiza si se ejecuto alguna redireccion para el proceso de manejado de archivo
     if(coms.front().second == 2){ // Si se encontro el redireccionamiento "<"
-            int fd = open(direccion.front(), O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer
-            if(fd < 0){
-                cerr << "Error al abrir el archivo de entrada: " << direccion.front() << '\0' << endl;
-                exit(EXIT_FAILURE);
-            }
-            dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
-            close(fd); // cierra el archivo
-
-    }else if(coms.front().second == 1){
-            int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);  	 
-            if (fd < 0) {
-                cerr << "Error al abrir el archivo de salida" << std::endl;
-                exit(EXIT_FAILURE);
-            }
-            dup2(fd, STDOUT_FILENO);
-            close(fd);
+        int fd = open(direccion.front(), O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer
+        if(fd < 0){
+            cerr << "Error al abrir el archivo de entrada" << endl;
+            exit(EXIT_FAILURE);
+        }
+        dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
+        close(fd); // cierra el archivo
     }
-
+    else if(coms.front().second == 1){
+        int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if(fd < 0){
+            cerr << "Error al abrir el archivo de salida" << endl;
+            exit(EXIT_FAILURE);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+    }else if(coms.front().second == 3){
+        int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+        if(fd < 0){
+            cerr << "Error al abrir el archivo de salida" << endl;
+            exit(EXIT_FAILURE);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+        if(fd < 0){
+            cerr << "Error al abrir el archivo de salida" << endl;
+            exit(EXIT_FAILURE);
+        }
+        dup2(fd, STDOUT_FILENO);
+        close(fd);       
+    }
 }
 
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
+
     if(!strcmp(token, ">")) return 1;
     else if(!strcmp(token, "<")) return 2;
-    else if(!strcmp(token, ">>")) return 3;
-    else if(!strcmp(token, "|")) return 4;
+    else if(!strcmp(token, ">>" )) return 3;
     else return 0;
 }
 
-int Comando::casoencadenamiento(char *token){ //no deberia necesitar de un espacio...
-    if(!strcmp(token, "&&")) return 1;
-    else if(!strcmp(token, "||")) return 2;
-    else if(!strcmp(token, ";")) return 3;
+int Comando::casoencadenamiento(char *token){
+    if(!strcmp(token, ";")) return 1;
     else return 0;
 }
 
@@ -191,9 +188,8 @@ int main(){
     Comando comando;
     while(true){
         comando.prompt();
+
         comando.divide();
-        //comando.ver_comandos();
-       // comando.ver_direcciones();
         comando.execute();
     }
     return 0;
