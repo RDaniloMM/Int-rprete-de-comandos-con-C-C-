@@ -1,9 +1,10 @@
 #include<iostream>
-#include<fstream>
 using namespace std;
 
 int main(){
-    string s;
-    cin >> s;
-    cout << s << "++++" << endl;
+    char c;
+    while(cin >> c){
+        cout << c;
+    }
+    cout << '\n';
 }

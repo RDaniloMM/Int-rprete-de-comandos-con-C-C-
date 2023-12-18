@@ -29,6 +29,7 @@ Lista de operadores de control a implementar:
 operadores de redireccion:
 >
 <
+|
 Operadores de encadenamiento:
 ;
 */
@@ -38,7 +39,18 @@ sistemas operativos es un curso bonito :)
 
 
 comandos de prueba:
+Para ir de /usr/bin hasta output:
+cd /home/danilomm/cpp_archivos/output
+
 cat test.txt
 ls -l > test.txt
-pwd ; cat test.txt ; cd .. ; mkdir sistemasoperativos_es_easy ; cd output
+
+./test2 > test.txt
+wc -w test.txt >> test.txt
+cat test2.txt >> test.txt
+cat < test.txt
+
+pwd ; cat test.txt ; cd .. ; mkdir 55s ; cd output
 mkdir Prueba ; cd Prueba ; touch proy.txt in.txt ; ls -al > proy.txt ; cd .. ; ./test < test2.txt ; echo SO ESIS > test3.txt ; cat test3.txt ; whoami
+    
+pwd ; ls -al | grep u ; ls -al > test4.txt ; ./test < test4.txt ; cd .. ; cat test.cpp ; pwd
