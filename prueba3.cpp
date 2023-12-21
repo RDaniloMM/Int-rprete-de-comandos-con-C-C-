@@ -79,7 +79,6 @@ void Comando::ingresar_comando(Comando comando){
     fflush(stdout);
     int index = 0;
     int tamanio_historialc = historial_comandos.size();
-    cout<<tamanio_historialc<<endl;
     comando.prompt();
 
     while ((str[index] = obtenerTecla()) != '\n') {     // Leer caracter a caracter ingresado
