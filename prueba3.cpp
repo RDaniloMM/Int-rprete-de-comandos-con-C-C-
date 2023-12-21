@@ -26,23 +26,23 @@
 using namespace std;
 
 // Simular la función getch en Linux
-char obtenerTecla() {
+char obtenerTecla(){
     int buf = 0;
     struct termios old = {0};
     fflush(stdout);
-    if (tcgetattr(0, &old) < 0)
+    if(tcgetattr(0, &old) < 0)
         perror("tcsetattr()");
     old.c_lflag &= ~ICANON;
     old.c_lflag &= ~ECHO;
     old.c_cc[VMIN] = 1;
     old.c_cc[VTIME] = 0;
-    if (tcsetattr(0, TCSANOW, &old) < 0)
+    if(tcsetattr(0, TCSANOW, &old) < 0)
         perror("tcsetattr ICANON");
-    if (read(0, &buf, 1) < 0)
+    if(read(0, &buf, 1) < 0)
         perror("read()");
     old.c_lflag |= ICANON;
     old.c_lflag |= ECHO;
-    if (tcsetattr(0, TCSADRAIN, &old) < 0)
+    if(tcsetattr(0, TCSADRAIN, &old) < 0)
         perror("tcsetattr ~ICANON");
     return (buf);
 }
@@ -81,77 +81,77 @@ void Comando::ingresar_comando(Comando comando){
     int tamanio_historialc = historial_comandos.size();
     comando.prompt();
 
-    while ((str[index] = obtenerTecla()) != '\n') {     // Leer caracter a caracter ingresado
-        if (str[index] == '\e'){
+    while((str[index] = obtenerTecla()) != '\n'){     // Leer caracter a caracter ingresado
+        if(str[index] == '\e'){
             char siguiente = obtenerTecla();
             char tercero = obtenerTecla();
 
-            if (siguiente == '[' && tercero == 'A') {       // Si se presiona la flecha arriba se obtiene el anterior comando ingresado
+            if(siguiente == '[' && tercero == 'A'){       // Si se presiona la flecha arriba se obtiene el anterior comando ingresado
                 cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
                 comando.prompt();
                 index = 0;
 
                 // Casos que se dan cuando retrocedemos en el historial de comandos
-                if ((tamanio_historialc-1) != -1){
-                    cout<<historial_comandos[--tamanio_historialc];
+                if((tamanio_historialc - 1) != -1){
+                    cout << historial_comandos[--tamanio_historialc];
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
-                else if (!historial_comandos.empty() && (tamanio_historialc-1) == -1){ // se encuentra en el indice 0 del vector historial_comandos
-                    cout<<historial_comandos[tamanio_historialc];                      
+                else if(!historial_comandos.empty() && (tamanio_historialc - 1) == -1){ // se encuentra en el indice 0 del vector historial_comandos
+                    cout << historial_comandos[tamanio_historialc];
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
             }
-            else if (siguiente == '[' && tercero == 'B') {  // Si se presiona la flecha abajo se obtiene el posterior comando ingresado
+            else if(siguiente == '[' && tercero == 'B'){  // Si se presiona la flecha abajo se obtiene el posterior comando ingresado
                 cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
                 comando.prompt();
                 index = 0;
 
                 // Casos que se dan cuando avanzamos en el historial de comandos
-                if (!historial_comandos.empty() && (tamanio_historialc+1) != historial_comandos.size()){
-                    cout<<historial_comandos[++tamanio_historialc];
+                if(!historial_comandos.empty() && (tamanio_historialc + 1) != historial_comandos.size()){
+                    cout << historial_comandos[++tamanio_historialc];
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
-                else if (!historial_comandos.empty() && (tamanio_historialc+1) == historial_comandos.size()){ // se encuentra en el indice 0 del vector historial_comandos
+                else if(!historial_comandos.empty() && (tamanio_historialc + 1) == historial_comandos.size()){ // se encuentra en el indice 0 del vector historial_comandos
                     strcpy(str, "");
                     index = 0;
                 }
             }
         }
-        else if (str[index] == 127) {       // Simula la tecla Backspace para borrar el ultimo caracter
-            if (index != 0){
+        else if(str[index] == 127){       // Simula la tecla Backspace para borrar el ultimo caracter
+            if(index != 0){
                 cout << "\b \b";
                 index--;
             }
         }
         else{
-            cout<<str[index];
+            cout << str[index];
             index++;
         }
     }
 
-    if (index > 0) {                         // para no tomar en cuenta las cadenas vacias
+    if(index > 0){                         // para no tomar en cuenta las cadenas vacias
         str[index] = '\0';
-        historial_comandos.push_back(str); 
+        historial_comandos.push_back(str);
     }
 
-    cout<<endl;
-    if(!strcmp(str, "salir")) exit(0);    
+    cout << endl;
+    if(!strcmp(str, "salir")) exit(0);
 }
 
 void Comando::prompt(){
-        getcwd(dir, PATH_MAX); // obtiene la direccion actual
-        string homeDir(user->pw_dir); // directorio home del usuario
-        string dirStr(dir);
+    getcwd(dir, PATH_MAX); // obtiene la direccion actual
+    string homeDir(user->pw_dir); // directorio home del usuario
+    string dirStr(dir);
 
-        // encuentra homeDir dentro de dir (directorio completo actual) y reemplaza /home/usuario por ~
-        size_t pos = dirStr.find(homeDir);
-        if(pos != string::npos){
-            dirStr.replace(pos, homeDir.length(), "~");
-        }
-        cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
+    // encuentra homeDir dentro de dir (directorio completo actual) y reemplaza /home/usuario por ~
+    size_t pos = dirStr.find(homeDir);
+    if(pos != string::npos){
+        dirStr.replace(pos, homeDir.length(), "~");
+    }
+    cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
 
 }
 
