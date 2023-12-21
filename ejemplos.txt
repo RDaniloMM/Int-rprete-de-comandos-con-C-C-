@@ -1,31 +1,33 @@
-//(com (-opcs)* (args)* (opr in/outfile?)*)*
-
-//comando  opciones  argumentos
-    // |       |         |
-    // v       v         v
-    // ls    -alh   hola.txt
-
-/*
-Lista de operadores de control:
+operadores de redireccion:
 >
 <
->>
 |
-
+Operadores de encadenamiento:
 ;
-&&
-||
-& (tal vez)
 */
+test.txt:
 
-//  comandos de prueba:
-//rm -f archivo_a_eliminar.txt
-//cp -r carpeta_origen/ carpeta_destino/
-//sudo apt-get install curl
-//mkdir -p /ruta/de/directorios/nuevos
+sistemas operativos es un curso bonito :)
 
-//./mi_programa > registro.txt
-//comando >> archivo_salida.txt
-//cat < texto.txt
-//sort < desordenado.txt > ordenado.txt
-//cd ProyectosSecretos/ac && touch Proy.txt && ls -al > arch.txt && ./prog <in.txt >out.txt
+
+comandos de prueba:
+Para ir de /usr/bin hasta output:
+cd /home/danilomm/cpp_archivos/output
+
+/bin/ls
+ls
+ping 8.8.8.8
+
+cat test.txt
+ls -l > test.txt
+wc -c test1.txt test2.txt
+
+./test2 > test.txt
+wc -w test.txt >> test.txt
+cat test2.txt >> test.txt
+cat < test.txt
+
+pwd ; cat test.txt ; cd .. ; mkdir 55s ; cd output
+mkdir Prueba ; cd Prueba ; touch proy.txt in.txt ; ls -al > proy.txt ; cd .. ; ./test < test2.txt ; echo SO ESIS > test3.txt ; cat test3.txt ; whoami
+
+pwd ; ls -al | grep u ; ls -al > test4.txt ; ./test < test4.txt ; cd .. ; cat test.cpp ; pwd
