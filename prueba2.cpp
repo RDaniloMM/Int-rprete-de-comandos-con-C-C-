@@ -145,10 +145,6 @@ void Comando::ingresar_comando(Comando comando){
 
     cout << "\n";
     if(!strcmp(str, "salir")) exit(0);
-
-    if(!strcmp(str, "\n")){
-        return ingresar_comando(comando);
-    }
 }
 
 void Comando::prompt(){
