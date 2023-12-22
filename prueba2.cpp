@@ -249,7 +249,7 @@ void Comando::execute(){
                 exit(1);
             }
             else{// Proceso padre
-                if(coms.fron().second != 5){
+                if(coms.front().second != 5){
                   wait(NULL); //Espera a que el proceso hijo termine
                 }else{
                     procesosEnSegundoPlano.push_back(child_pid);
@@ -370,7 +370,7 @@ int Comando::casoredireccion(char *token){//verifica si un token es un operador 
     else if(!strcmp(token, "<")) return 2;
     else if(!strcmp(token, ">>")) return 3;
     else if(!strcmp(token, "|")) return 4;
-    else if(!strcmp(token, "&")) return 4;
+    else if(!strcmp(token, "&")) return 5;
     else return 0;
 }
 
