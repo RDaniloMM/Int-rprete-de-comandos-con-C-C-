@@ -22,11 +22,7 @@
 #define WRITE_END   1    
 using namespace std;
 
-<<<<<<< HEAD
 // Simula la funcion getch en Linux
-=======
-// Simula la funciÃ³n getch en Linux
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
 char obtenerTecla(){
     int buf = 0;
     struct termios old = {0};
@@ -75,11 +71,7 @@ Comando::Comando(){
     gethostname(hostName, HOST_NAME_MAX);
     uid_t uid = geteuid();
     user = getpwuid(uid);
-<<<<<<< HEAD
     chdir("/bin");
-=======
-    //chdir("/bin");
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
     signal(SIGINT, SIG_IGN);
 }
 
@@ -89,98 +81,74 @@ void Comando::ingresar_comando(Comando comando){
     int tamanio_historialc = historial_comandos.size();
     comando.prompt();
 
-    while ((str[index] = obtenerTecla()) != '\n') {     // Leer caracter a caracter ingresado
-        if (str[index] == '\e'){
+    while((str[index] = obtenerTecla()) != '\n'){     // Leer caracter a caracter ingresado
+        if(str[index] == '\e'){
             char siguiente = obtenerTecla();
             char tercero = obtenerTecla();
 
-            if (siguiente == '[' && tercero == 'A') {       // Si se presiona la flecha arriba se obtiene el anterior comando ingresado
+            if(siguiente == '[' && tercero == 'A'){       // Si se presiona la flecha arriba se obtiene el anterior comando ingresado
                 cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
                 comando.prompt();
                 index = 0;
 
                 // Casos que se dan cuando retrocedemos en el historial de comandos
-                if ((tamanio_historialc-1) != -1){
-                    cout<<historial_comandos[--tamanio_historialc];
+                if((tamanio_historialc - 1) != -1){
+                    cout << historial_comandos[--tamanio_historialc];
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
-                else if (!historial_comandos.empty() && (tamanio_historialc-1) == -1){ // se encuentra en el indice 0 del vector historial_comandos
-                    cout<<historial_comandos[tamanio_historialc];                      
+                else if(!historial_comandos.empty() && (tamanio_historialc - 1) == -1){ // se encuentra en el indice 0 del vector historial_comandos
+                    cout << historial_comandos[tamanio_historialc];
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
                 // El caso donde el vector esta vacio
             }
-            else if (siguiente == '[' && tercero == 'B') {  // Si se presiona la flecha abajo se obtiene el posterior comando ingresado
+            else if(siguiente == '[' && tercero == 'B'){  // Si se presiona la flecha abajo se obtiene el posterior comando ingresado
                 cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
                 comando.prompt();
                 index = 0;
 
                 // Casos que se dan cuando avanzamos en el historial de comandos
-<<<<<<< HEAD
                 if((tamanio_historialc + 1) == historial_comandos.size()){ // se encuentra en el indice 0 del vector historial_comandos
-=======
-                if ((tamanio_historialc+1) == historial_comandos.size()){ // se encuentra en el indice 0 del vector historial_comandos
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
                     strcpy(str, "");
                     index = 0;
                     ++tamanio_historialc;
                 }
-<<<<<<< HEAD
                 else if(!historial_comandos.empty() && (tamanio_historialc + 1) < historial_comandos.size()){
                     cout << historial_comandos[++tamanio_historialc];
-=======
-                else if (!historial_comandos.empty() && (tamanio_historialc+1) < historial_comandos.size()){
-                    cout<<historial_comandos[++tamanio_historialc];
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
                     strcpy(str, historial_comandos[tamanio_historialc].c_str());
                     index = historial_comandos[tamanio_historialc].size();
                 }
                 // El caso donde el vector esta vacio
             }
         }
-<<<<<<< HEAD
         else if(str[index] == 127){       // Simula la tecla Backspace para borrar el ultimo caracter
             if(index > 0){
-=======
-        else if (str[index] == 127) {       // Simula la tecla Backspace para borrar el ultimo caracter
-            if (index != 0){
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
                 cout << "\b \b";
                 index--;
             }
         }
         else{
-            cout<<str[index];
+            cout << str[index];
             index++;
         }
     }
-<<<<<<< HEAD
     if(index > 0){                         // para no tomar en cuenta las cadenas vacias
-=======
-
-    if (index > 0) {                         // para no tomar en cuenta las cadenas vacias
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
         str[index] = '\0';
-        historial_comandos.push_back(str); 
+        historial_comandos.push_back(str);
     }
     else{
         cout << "\n";
         return ingresar_comando(comando);
     }
 
-<<<<<<< HEAD
     cout << "\n";
     if(!strcmp(str, "salir")) exit(0);
 
     if(!strcmp(str, "\n")){
         return ingresar_comando(comando);
     }
-=======
-    cout<<endl;
-    if(!strcmp(str, "salir")) exit(0);    
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
 }
 
 void Comando::prompt(){
@@ -279,11 +247,7 @@ void Comando::execute(){
             else if(child_pid == 0){ //Proceso hijo
                 processRed();
                 execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
-<<<<<<< HEAD
                 cout << "Error al ejecutar el comando: " << coms.front().first[0] << "\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
-=======
-                cout << "Error al ejecutar el comando : " << coms.front().first[0] << "\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
                 exit(1);
             }
             else{// Proceso padre
@@ -382,7 +346,6 @@ void Comando::Pipe(){
 }
 
 
-<<<<<<< HEAD
 void Comando::verProcessSecond(){
     for(auto it = procesosEnSegundoPlano.begin(); it != procesosEnSegundoPlano.end(); ){
         int estado;
@@ -407,8 +370,6 @@ void Comando::verProcessSecond(){
 }
 
 
-=======
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
     if(!strcmp(token, ">")) return 1;
     else if(!strcmp(token, "<")) return 2;
@@ -423,11 +384,7 @@ int Comando::casoencadenamiento(char *token){
     else return 0;
 }
 void handleCtrlC(int signo){
-<<<<<<< HEAD
     signal(SIGINT, handleCtrlC);
-=======
-    signal(SIGINT, handleCtrlC); // Restaurar el manejo de Ctrl + C al manejador personalizado
->>>>>>> 7f9e470d701d4ca200ec93bb00e468e782136b28
 }
 int main(){
     Comando comando;
