@@ -195,11 +195,11 @@ void Comando::divide(){
             comsimple[n] = NULL;
             if(!haydirec){
                 coms.push({comsimple,casoredir});
+                direccion.push(NULL);
             }
             haydirec = 0;
             n = 0;
             comsimple = new char *[MAX_ARGUMENTS];
-            direccion.push(NULL);
         }
 
         token = strtok(NULL, " ");

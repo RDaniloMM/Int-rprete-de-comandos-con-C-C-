@@ -1,10 +1,12 @@
 #include <iostream>
+#include <unistd.h>
+#include <termios.h>
+#include <vector>
 #include <queue>
 #include <cstring>
 #include <cstdio>
 #include <cstdlib>
 #include <climits>
-#include <unistd.h>
 #include <sys/wait.h>
 #include <pwd.h>
 #include <fcntl.h>
@@ -22,6 +24,28 @@
 #define WRITE_END   1    
 using namespace std;
 
+// Simula la funciÃ³n getch en Linux
+char obtenerTecla(){
+    int buf = 0;
+    struct termios old = {0};
+    fflush(stdout);
+    if(tcgetattr(0, &old) < 0)
+        perror("tcsetattr()");
+    old.c_lflag &= ~ICANON;
+    old.c_lflag &= ~ECHO;
+    old.c_cc[VMIN] = 1;
+    old.c_cc[VTIME] = 0;
+    if(tcsetattr(0, TCSANOW, &old) < 0)
+        perror("tcsetattr ICANON");
+    if(read(0, &buf, 1) < 0)
+        perror("read()");
+    old.c_lflag |= ICANON;
+    old.c_lflag |= ECHO;
+    if(tcsetattr(0, TCSADRAIN, &old) < 0)
+        perror("tcsetattr ~ICANON");
+    return (buf);
+}
+
 class Comando{
 private:
     char dir[PATH_MAX];
@@ -30,8 +54,10 @@ private:
     queue<pair<char **, int>> coms; //cola de comandos a ejecutarse
     queue<char *> direccion; //cola de archivos o argumentos
     char str[MAX_COMMAND_LENGTH]; //comando de entrada
+    vector<string> historial_comandos; // para ver el historial de comandos
 public:
     Comando();
+    void ingresar_comando(Comando comando);
     void prompt();
     void divide();
     void execute();
@@ -45,6 +71,78 @@ Comando::Comando(){
     gethostname(hostName, HOST_NAME_MAX);
     uid_t uid = geteuid();
     user = getpwuid(uid);
+    //chdir("/bin");
+    signal(SIGINT, SIG_IGN);
+}
+
+void Comando::ingresar_comando(Comando comando){
+
+    fflush(stdout);
+    int index = 0;
+    int tamanio_historialc = historial_comandos.size();
+    comando.prompt();
+
+    while ((str[index] = obtenerTecla()) != '\n') {     // Leer caracter a caracter ingresado
+        if (str[index] == '\e'){
+            char siguiente = obtenerTecla();
+            char tercero = obtenerTecla();
+
+            if (siguiente == '[' && tercero == 'A') {       // Si se presiona la flecha arriba se obtiene el anterior comando ingresado
+                cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
+                comando.prompt();
+                index = 0;
+
+                // Casos que se dan cuando retrocedemos en el historial de comandos
+                if ((tamanio_historialc-1) != -1){
+                    cout<<historial_comandos[--tamanio_historialc];
+                    strcpy(str, historial_comandos[tamanio_historialc].c_str());
+                    index = historial_comandos[tamanio_historialc].size();
+                }
+                else if (!historial_comandos.empty() && (tamanio_historialc-1) == -1){ // se encuentra en el indice 0 del vector historial_comandos
+                    cout<<historial_comandos[tamanio_historialc];                      
+                    strcpy(str, historial_comandos[tamanio_historialc].c_str());
+                    index = historial_comandos[tamanio_historialc].size();
+                }
+                // El caso donde el vector esta vacio
+            }
+            else if (siguiente == '[' && tercero == 'B') {  // Si se presiona la flecha abajo se obtiene el posterior comando ingresado
+                cout << "\033[2K\r" << flush; // Borra la línea completa y retrocede al principio
+                comando.prompt();
+                index = 0;
+
+                // Casos que se dan cuando avanzamos en el historial de comandos
+                if ((tamanio_historialc+1) == historial_comandos.size()){ // se encuentra en el indice 0 del vector historial_comandos
+                    strcpy(str, "");
+                    index = 0;
+                    ++tamanio_historialc;
+                }
+                else if (!historial_comandos.empty() && (tamanio_historialc+1) < historial_comandos.size()){
+                    cout<<historial_comandos[++tamanio_historialc];
+                    strcpy(str, historial_comandos[tamanio_historialc].c_str());
+                    index = historial_comandos[tamanio_historialc].size();
+                }
+                // El caso donde el vector esta vacio
+            }
+        }
+        else if (str[index] == 127) {       // Simula la tecla Backspace para borrar el ultimo caracter
+            if (index != 0){
+                cout << "\b \b";
+                index--;
+            }
+        }
+        else{
+            cout<<str[index];
+            index++;
+        }
+    }
+
+    if (index > 0) {                         // para no tomar en cuenta las cadenas vacias
+        str[index] = '\0';
+        historial_comandos.push_back(str); 
+    }
+
+    cout<<endl;
+    if(!strcmp(str, "salir")) exit(0);    
 }
 
 void Comando::prompt(){
@@ -52,15 +150,13 @@ void Comando::prompt(){
     string homeDir(user->pw_dir); // directorio home del usuario
     string dirStr(dir);
 
-    //encuentra homeDir dentro de dir (directorio completo actual) y reemplaza /home/usuario por ~
+    // encuentra homeDir dentro de dir (directorio completo actual) y reemplaza /home/usuario por ~
     size_t pos = dirStr.find(homeDir);
     if(pos != string::npos){
         dirStr.replace(pos, homeDir.length(), "~");
     }
     cout << VERDE << user->pw_name << "@" << hostName << RESET << ":" << AZUL << dirStr << RESET << "[ESIS]$ ";
-    fflush(stdout);
-    cin.getline(str, MAX_COMMAND_LENGTH);
-    if(!strcmp(str, "salir")) exit(0);
+
 }
 
 void Comando::divide(){
@@ -68,20 +164,21 @@ void Comando::divide(){
     int n = 0, casoencad, casoredir = 0;
     bool haydirec = 0;
 
-    char **comsimple = new char *[MAX_ARGUMENTS]; 
+    char **comsimple = new char *[MAX_ARGUMENTS];
     char *token = strtok(str, " ");
     while(token != NULL && n < MAX_COMMAND_LENGTH){
         casoredir = 0; // Regresa a 0 para volver a empezar denuevo a analizar el redireccionamiento
 
-        if(!(casoencad = casoencadenamiento(token))){ 
-            casoredir = casoredireccion(token); 
+        if(!(casoencad = casoencadenamiento(token))){
+            casoredir = casoredireccion(token);
             if((casoredir == 1) || (casoredir == 2) || (casoredir == 3)){
-                haydirec = 1; 
-                token = strtok(NULL, " "); 
-                comsimple[n] = NULL; 
-                coms.push({comsimple,casoredir}); 
+                haydirec = 1;
+                token = strtok(NULL, " ");
+                comsimple[n] = NULL;
+                coms.push({comsimple,casoredir});
                 direccion.push(token);
-            }else if(casoredir == 4){
+            }
+            else if(casoredir == 4){
                 comsimple[n] = NULL;
                 coms.push({comsimple,casoredir});
                 haydirec = 0;
@@ -95,8 +192,8 @@ void Comando::divide(){
         }
 
         else{
-            comsimple[n] = NULL; 
-            if(!haydirec){ 
+            comsimple[n] = NULL;
+            if(!haydirec){
                 coms.push({comsimple,casoredir});
                 direccion.push(NULL);
             }
@@ -121,8 +218,9 @@ void Comando::execute(){
             if(chdir(coms.front().first[1]) == -1){
                 cout << "Error al cambiar de directorio\n";
             }
-        }else if(coms.front().second == 4){
-           Pipe();
+        }
+        else if(coms.front().second == 4){
+            Pipe();
         }
         else{
             pid_t child_pid = fork(); //Duplica el proceso actual y retorna un valor segun sea el proceso
@@ -133,7 +231,7 @@ void Comando::execute(){
             else if(child_pid == 0){ //Proceso hijo
                 processRed();
                 execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
-                cout << "Error al ejecutar el comando : "<<coms.front().first[0]<<"\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃ­nea
+                cout << "Error al ejecutar el comando : " << coms.front().first[0] << "\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
                 exit(1);
             }
             else{// Proceso padre
@@ -141,7 +239,7 @@ void Comando::execute(){
             }
         }
         direccion.pop();
-        coms.pop(); 
+        coms.pop();
     }
 }
 
@@ -165,7 +263,7 @@ void Comando::processRed(){ // Analiza si se ejecuto alguna redireccion para el 
         dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
         close(fd); // cierra el archivo
     }
-    
+
     else if(coms.front().second == 3){
         int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
         if(fd < 0){
@@ -177,14 +275,13 @@ void Comando::processRed(){ // Analiza si se ejecuto alguna redireccion para el 
             exit(EXIT_FAILURE);
         }
         dup2(fd, STDOUT_FILENO);
-        close(fd);    
-    }   
+        close(fd);
+    }
 
 }
 
 void Comando::Pipe(){
     int fd[2];
-    int status;
     pipe(fd);
     pid_t child_pid1 = fork();
     if(child_pid1 < 0){ //Error
@@ -193,10 +290,10 @@ void Comando::Pipe(){
     }
     else if(child_pid1 == 0){ //Proceso hijo
         close(fd[READ_END]);
-        dup2(fd[WRITE_END],STDOUT_FILENO);
+        dup2(fd[WRITE_END], STDOUT_FILENO);
         close(fd[WRITE_END]);
         execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
-        cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃ­nea
+        cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
         exit(1);
     }
     else{// Proceso padre
@@ -208,14 +305,16 @@ void Comando::Pipe(){
         }
         else if(child_pid2 == 0){ //Proceso hijo
             close(fd[WRITE_END]);
-            dup2(fd[READ_END],STDIN_FILENO);
+            dup2(fd[READ_END], STDIN_FILENO);
             close(fd[READ_END]);
             direccion.pop();
             coms.pop();
+            processRed();
             execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
-            cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃ­nea
+            cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
             exit(1);
-        }else{
+        }
+        else{
             close(fd[READ_END]);
             wait(NULL);
             wait(NULL);
@@ -227,10 +326,9 @@ void Comando::Pipe(){
 
 
 int Comando::casoredireccion(char *token){//verifica si un token es un operador de redireccion
-
     if(!strcmp(token, ">")) return 1;
     else if(!strcmp(token, "<")) return 2;
-    else if(!strcmp(token, ">>" )) return 3;
+    else if(!strcmp(token, ">>")) return 3;
     else if(!strcmp(token, "|")) return 4;
     else return 0;
 }
@@ -239,11 +337,14 @@ int Comando::casoencadenamiento(char *token){
     if(!strcmp(token, ";")) return 1;
     else return 0;
 }
-
+void handleCtrlC(int signo){
+    signal(SIGINT, handleCtrlC); // Restaurar el manejo de Ctrl + C al manejador personalizado
+}
 int main(){
     Comando comando;
+    signal(SIGINT, handleCtrlC);
     while(true){
-        comando.prompt();
+        comando.ingresar_comando(comando);
         comando.divide();
         comando.execute();
     }
