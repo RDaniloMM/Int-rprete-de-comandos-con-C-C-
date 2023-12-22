@@ -7,7 +7,7 @@ Operadores de encadenamiento:
 */
 test.txt:
 
-sistemas operativos es un curso bonito :)
+sistemas operativos es un hermoso curso :)
 
 
 comandos de prueba:
@@ -20,14 +20,14 @@ ping 8.8.8.8
 
 cat test.txt
 ls -l > test.txt
-wc -c test1.txt test2.txt
+wc -c test.txt test2.txt
 
 ./test2 > test.txt
 wc -w test.txt >> test.txt
 cat test2.txt >> test.txt
 cat < test.txt
 
-pwd ; cat test.txt ; cd .. ; mkdir 55s ; cd output
+pwd ; cat test.txt ; cd .. ; mkdir 55s ; cd output ; neofetch ; cowsay -f dragon-and-cow Esto es linux!
 mkdir Prueba ; cd Prueba ; touch proy.txt in.txt ; ls -al > proy.txt ; cd .. ; ./test < test2.txt ; echo SO ESIS > test3.txt ; cat test3.txt ; whoami
 
 pwd ; ls -al | grep u ; ls -al > test4.txt ; ./test < test4.txt ; cd .. ; cat test.cpp ; pwd

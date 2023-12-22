@@ -127,7 +127,7 @@ void Comando::ingresar_comando(Comando comando){
     str[index] = '\0';
     // si se introduce un espacio en blanco no hacer push_back
     historial_comandos.push_back(str);
-    cout<<endl;
+    cout<<"\n";
     if(!strcmp(str, "salir")) exit(0);
     
 }
@@ -243,7 +243,7 @@ int Comando::processRed(){ // Analiza si se ejecutó alguna redirección para el
     if(coms.front().second == 1){
         int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
         if(fd < 0){
-            cerr << "Error al abrir el archivo de salida" << endl;
+            cerr << "Error al abrir el archivo de salida" << "\n";
             exit(EXIT_FAILURE);
         }
         dup2(fd, STDOUT_FILENO);
@@ -254,7 +254,7 @@ int Comando::processRed(){ // Analiza si se ejecutó alguna redirección para el
     else if(coms.front().second == 2){ // Si se encontro el redireccionamiento "<"
         int fd = open(direccion.front(), O_RDONLY); // Abro el archivo (segunda parte) guardado en direccion con permiso para solo leer
         if(fd < 0){
-            cerr << "Error al abrir el archivo de entrada" << endl;
+            cerr << "Error al abrir el archivo de entrada" << "\n";
             exit(EXIT_FAILURE);
         }
         dup2(fd, STDIN_FILENO); // lee el archivo en lugar del teclado y lo reserva
@@ -265,11 +265,11 @@ int Comando::processRed(){ // Analiza si se ejecutó alguna redirección para el
     else if(coms.front().second == 3){
         int fd = open(direccion.front(), O_WRONLY | O_CREAT | O_APPEND, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
         if(fd < 0){
-            cerr << "Error al abrir el archivo de salida" << endl;
+            cerr << "Error al abrir el archivo de salida" << "\n";
             exit(EXIT_FAILURE);
         }
         if(fd < 0){
-            cerr << "Error al abrir el archivo de salida" << endl;
+            cerr << "Error al abrir el archivo de salida" << "\n";
             exit(EXIT_FAILURE);
         }
         dup2(fd, STDOUT_FILENO);
@@ -282,7 +282,7 @@ int Comando::processRed(){ // Analiza si se ejecutó alguna redirección para el
         pipe(fd);
         pid_t child_pid1 = fork();
         if(child_pid1 < 0){ // Error
-            cout << "Error al crear un proceso hijo" << endl;
+            cout << "Error al crear un proceso hijo" << "\n";
             exit(1);
         }
         else if(child_pid1 == 0){ // Proceso hijo
@@ -297,7 +297,7 @@ int Comando::processRed(){ // Analiza si se ejecutó alguna redirección para el
             close(fd[WRITE_END]);
             pid_t child_pid2 = fork();
             if(child_pid2 < 0){ // Error
-                cout << "Error al crear un proceso hijo" << endl;
+                cout << "Error al crear un proceso hijo" << "\n";
                 exit(1);
             }
             else if(child_pid2 == 0){ // Proceso hijo
