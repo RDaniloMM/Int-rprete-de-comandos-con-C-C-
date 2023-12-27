@@ -145,10 +145,6 @@ void Comando::ingresar_comando(Comando comando){
 
     cout << "\n";
     if(!strcmp(str, "salir")) exit(0);
-
-    if(!strcmp(str, "\n")){
-        return ingresar_comando(comando);
-    }
 }
 
 void Comando::prompt(){
@@ -331,6 +327,7 @@ void Comando::Pipe(){
             close(fd[READ_END]);
             direccion.pop();
             coms.pop();
+            processRed();
             execvp(coms.front().first[0], coms.front().first); //Ejecuta el comando con sus argumentos
             cout << "Error al ejecutar el comando\n"; //cuando el comando se ejecuta correctamente no se muestra esta lÃƒÂ­nea
             exit(1);
